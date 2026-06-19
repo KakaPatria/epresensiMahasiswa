@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:async';
+import 'dart:convert';
 import 'package:geolocator/geolocator.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../providers/presensi_provider.dart';
 import '../services/location_service.dart';
@@ -15,12 +17,14 @@ class DashboardScreen extends StatefulWidget {
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProviderStateMixin {
+class _DashboardScreenState extends State<DashboardScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
   StreamSubscription<Position>? _positionStream;
   double? _currentDistance;
   final LocationService _locationService = LocationService();
+  String? _base64Image;
 
   @override
   void initState() {
@@ -30,7 +34,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
       vsync: this,
       duration: const Duration(milliseconds: 1500),
     )..repeat(reverse: true);
-    
+
     _pulseAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
@@ -38,21 +42,39 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadData();
       _startLocationStream();
+      _loadProfileImage();
     });
+  }
+
+  Future<void> _loadProfileImage() async {
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    if (user != null) {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _base64Image = prefs.getString('avatar_${user.id}');
+      });
+    }
   }
 
   void _startLocationStream() async {
     bool hasPermission = await _locationService.handleLocationPermission();
     if (hasPermission) {
-      _positionStream = Geolocator.getPositionStream(
-        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high, distanceFilter: 2),
-      ).listen((Position position) {
-        if (mounted) {
-          setState(() {
-            _currentDistance = _locationService.calculateDistance(position.latitude, position.longitude);
+      _positionStream =
+          Geolocator.getPositionStream(
+            locationSettings: const LocationSettings(
+              accuracy: LocationAccuracy.high,
+              distanceFilter: 2,
+            ),
+          ).listen((Position position) {
+            if (mounted) {
+              setState(() {
+                _currentDistance = _locationService.calculateDistance(
+                  position.latitude,
+                  position.longitude,
+                );
+              });
+            }
           });
-        }
-      });
     }
   }
 
@@ -66,18 +88,23 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
   Future<void> _loadData() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
     if (authProvider.currentUser != null) {
-      await Provider.of<PresensiProvider>(context, listen: false)
-          .loadRiwayat(authProvider.currentUser!.id!);
+      await Provider.of<PresensiProvider>(
+        context,
+        listen: false,
+      ).loadRiwayat(authProvider.currentUser!.id!);
     }
   }
 
   void _doPresensi() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
-    final presensiProvider = Provider.of<PresensiProvider>(context, listen: false);
+    final presensiProvider = Provider.of<PresensiProvider>(
+      context,
+      listen: false,
+    );
 
     if (authProvider.currentUser != null) {
       await presensiProvider.doPresensi(authProvider.currentUser!.id!);
-      
+
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -90,8 +117,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             ],
           ),
           behavior: SnackBarBehavior.floating,
-          backgroundColor: presensiProvider.message.contains('berhasil') ? Colors.green : Colors.redAccent,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: presensiProvider.message.contains('berhasil')
+              ? Colors.green
+              : Colors.redAccent,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           margin: const EdgeInsets.all(16),
         ),
       );
@@ -108,7 +139,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F7FA), // Latar belakang abu-abu sangat muda
+      backgroundColor: const Color(
+        0xFFF5F7FA,
+      ), // Latar belakang abu-abu sangat muda
       body: RefreshIndicator(
         onRefresh: _loadData,
         child: SingleChildScrollView(
@@ -117,10 +150,18 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
             children: [
               // Header Gradient Modern
               Container(
-                padding: const EdgeInsets.only(top: 60, left: 24, right: 24, bottom: 40),
+                padding: const EdgeInsets.only(
+                  top: 60,
+                  left: 24,
+                  right: 24,
+                  bottom: 40,
+                ),
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Color(0xFF2980B9), Color(0xFF2C3E50)], // Gradien Biru ke Dark Navy
+                    colors: [
+                      Color(0xFF2980B9),
+                      Color(0xFF2C3E50),
+                    ], // Gradien Biru ke Dark Navy
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
@@ -138,7 +179,10 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                         children: [
                           const Text(
                             'Selamat Datang,',
-                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 16,
+                            ),
                           ),
                           const SizedBox(height: 8),
                           Text(
@@ -154,14 +198,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                           const SizedBox(height: 4),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
                             decoration: BoxDecoration(
                               color: Colors.white24,
                               borderRadius: BorderRadius.circular(20),
                             ),
                             child: Text(
                               user.nim,
-                              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
                           ),
                         ],
@@ -171,7 +222,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                       onTap: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                          MaterialPageRoute(
+                            builder: (context) => const ProfileScreen(),
+                          ),
                         );
                       },
                       child: Hero(
@@ -182,10 +235,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                             shape: BoxShape.circle,
                             color: Colors.white,
                           ),
-                          child: const CircleAvatar(
+                          child: CircleAvatar(
                             radius: 32,
-                            backgroundColor: Color(0xFF2980B9),
-                            child: Icon(Icons.person, color: Colors.white, size: 35),
+                            backgroundColor: const Color(0xFF2980B9),
+                            backgroundImage: _base64Image != null
+                                ? MemoryImage(base64Decode(_base64Image!))
+                                : null,
+                            child: _base64Image == null
+                                ? const Icon(
+                                    Icons.person,
+                                    color: Colors.white,
+                                    size: 35,
+                                  )
+                                : null,
                           ),
                         ),
                       ),
@@ -193,7 +255,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                   ],
                 ),
               ),
-              
+
               // Memberikan efek floating overlap ke Header
               Transform.translate(
                 offset: const Offset(0, -20),
@@ -203,7 +265,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     children: [
                       Expanded(
                         child: _buildModernStatCard(
-                          title: 'Hari Ini',
+                          title: 'Hadir Kuliah',
                           value: presensiProvider.totalHariIni.toString(),
                           icon: Icons.today_rounded,
                           color: const Color(0xFF27AE60),
@@ -228,12 +290,19 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
               // Area Tombol Presensi Animasi
               if (_currentDistance != null)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: _currentDistance! <= 100 ? Colors.green.withValues(alpha: 0.1) : Colors.red.withValues(alpha: 0.1),
+                    color: _currentDistance! <= LocationService.maxRadius
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: _currentDistance! <= 100 ? Colors.green : Colors.redAccent,
+                      color: _currentDistance! <= LocationService.maxRadius
+                          ? Colors.green
+                          : Colors.redAccent,
                       width: 1.5,
                     ),
                   ),
@@ -241,15 +310,21 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        _currentDistance! <= 100 ? Icons.location_on : Icons.location_off,
-                        color: _currentDistance! <= 100 ? Colors.green : Colors.redAccent,
+                        _currentDistance! <= LocationService.maxRadius
+                            ? Icons.location_on
+                            : Icons.location_off,
+                        color: _currentDistance! <= LocationService.maxRadius
+                            ? Colors.green
+                            : Colors.redAccent,
                         size: 18,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         'Jarak: ${_currentDistance!.toStringAsFixed(1)} Meter',
                         style: TextStyle(
-                          color: _currentDistance! <= 100 ? Colors.green : Colors.redAccent,
+                          color: _currentDistance! <= LocationService.maxRadius
+                              ? Colors.green
+                              : Colors.redAccent,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -258,7 +333,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                 ),
               const SizedBox(height: 16),
               const Text(
-                'TAP UNTUK PRESENSI',
+                'TAP UNTUK PRESENSI KULIAH',
                 style: TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
@@ -286,7 +361,9 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFF3498DB).withValues(alpha: 0.6),
+                              color: const Color(
+                                0xFF3498DB,
+                              ).withValues(alpha: 0.6),
                               blurRadius: 40 * _pulseAnimation.value,
                               spreadRadius: 15 * _pulseAnimation.value,
                             ),
@@ -294,12 +371,15 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
                               color: Colors.white,
                               blurRadius: 10,
                               spreadRadius: 5,
-                            )
+                            ),
                           ],
                         ),
                         child: presensiProvider.isLoading
                             ? const Center(
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 5),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 5,
+                                ),
                               )
                             : const Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -321,7 +401,7 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
           ),
         ),
       ),
-      
+
       // Tombol Riwayat di tengah bawah (mengambang)
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
@@ -334,8 +414,12 @@ class _DashboardScreenState extends State<DashboardScreen> with SingleTickerProv
         backgroundColor: const Color(0xFF2C3E50),
         icon: const Icon(Icons.list_alt_rounded, color: Colors.white),
         label: const Text(
-          'RIWAYAT PRESENSI', 
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 1.0)
+          'RIWAYAT PRESENSI',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,

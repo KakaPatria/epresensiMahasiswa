@@ -12,7 +12,7 @@ class PresensiProvider with ChangeNotifier {
   List<PresensiModel> _riwayatPresensi = [];
   bool _isLoading = false;
   String _message = '';
-  
+
   int _totalKeseluruhan = 0;
   int _totalHariIni = 0;
 
@@ -53,10 +53,13 @@ class PresensiProvider with ChangeNotifier {
       return false;
     }
 
-    bool isWithinRadius = _locationService.isWithinRadius(position.latitude, position.longitude);
+    bool isWithinRadius = _locationService.isWithinRadius(
+      position.latitude,
+      position.longitude,
+    );
 
     if (!isWithinRadius) {
-      _message = 'Anda berada di luar area presensi';
+      _message = 'Posisi Anda berada di luar area kampus.';
       _setLoading(false);
       return false;
     }
@@ -75,7 +78,7 @@ class PresensiProvider with ChangeNotifier {
 
     int id = await _dbHelper.insertPresensi(newPresensi);
     if (id > 0) {
-      _message = 'Presensi berhasil';
+      _message = 'Presensi berhasil dicatat. Selamat mengikuti perkuliahan!';
       await loadRiwayat(userId);
       _setLoading(false);
       return true;

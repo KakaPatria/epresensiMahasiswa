@@ -24,12 +24,15 @@ class UserModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    var map = <String, dynamic>{
       'nama': nama,
       'nim': nim,
       'email': email,
       'password': password,
     };
+    if (id != null) {
+      map['id'] = id;
+    }
+    return map;
   }
 }

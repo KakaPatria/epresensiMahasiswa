@@ -33,7 +33,7 @@ class AuthProvider with ChangeNotifier {
   Future<bool> register(UserModel user) async {
     _setLoading(true);
     _errorMessage = '';
-    
+
     int result = await _dbHelper.registerUser(user);
     _setLoading(false);
 

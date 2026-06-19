@@ -33,19 +33,29 @@ class _CustomTextFieldState extends State<CustomTextField> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final iconColor = isDarkMode ? Colors.white70 : theme.primaryColor;
+    final borderColor = isDarkMode ? Colors.white30 : Colors.grey;
+    final focusColor = isDarkMode ? Colors.white : theme.primaryColor;
+
     return TextFormField(
       controller: widget.controller,
       obscureText: _obscureText,
       keyboardType: widget.keyboardType,
       validator: widget.validator,
+      style: TextStyle(color: isDarkMode ? Colors.white : Colors.black87),
       decoration: InputDecoration(
         labelText: widget.label,
-        prefixIcon: Icon(widget.icon, color: Colors.blue),
+        labelStyle: TextStyle(
+          color: isDarkMode ? Colors.white70 : Colors.black54,
+        ),
+        prefixIcon: Icon(widget.icon, color: iconColor),
         suffixIcon: widget.isPassword
             ? IconButton(
                 icon: Icon(
                   _obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.grey,
+                  color: isDarkMode ? Colors.white54 : Colors.grey,
                 ),
                 onPressed: () {
                   setState(() {
@@ -54,16 +64,16 @@ class _CustomTextFieldState extends State<CustomTextField> {
                 },
               )
             : null,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        filled: true,
+        fillColor: isDarkMode ? Colors.black26 : Colors.transparent,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.grey),
+          borderSide: BorderSide(color: borderColor),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: Colors.blue, width: 2),
+          borderSide: BorderSide(color: focusColor, width: 2),
         ),
       ),
     );

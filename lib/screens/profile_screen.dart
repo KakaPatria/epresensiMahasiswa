@@ -1,5 +1,8 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/custom_textfield.dart';
@@ -19,6 +22,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _emailController;
   late TextEditingController _passwordController;
   bool _isEditing = false;
+  String? _base64Image;
 
   @override
   void initState() {
@@ -27,6 +31,44 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _namaController = TextEditingController(text: user?.nama);
     _emailController = TextEditingController(text: user?.email);
     _passwordController = TextEditingController(text: user?.password);
+    _loadProfileImage();
+  }
+
+  Future<void> _loadProfileImage() async {
+    final user = Provider.of<AuthProvider>(context, listen: false).currentUser;
+    if (user != null) {
+      final prefs = await SharedPreferences.getInstance();
+      setState(() {
+        _base64Image = prefs.getString('avatar_${user.id}');
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final ImagePicker picker = ImagePicker();
+    final XFile? image = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 50,
+    );
+
+    if (image != null) {
+      final bytes = await image.readAsBytes();
+      final base64String = base64Encode(bytes);
+
+      if (!mounted) return;
+
+      final user = Provider.of<AuthProvider>(
+        context,
+        listen: false,
+      ).currentUser;
+      if (user != null) {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('avatar_${user.id}', base64String);
+        setState(() {
+          _base64Image = base64String;
+        });
+      }
+    }
   }
 
   void _updateProfile() async {
@@ -117,7 +159,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
         title: const Text(
-          'Profil Saya',
+          'Profil Mahasiswa',
           style: TextStyle(fontWeight: FontWeight.w600),
         ),
         backgroundColor: const Color(0xFF2980B9),
@@ -143,24 +185,58 @@ class _ProfileScreenState extends State<ProfileScreen> {
             // Profile Header / Avatar
             Hero(
               tag: 'profile_avatar',
-              child: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+              child: Stack(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 10,
+                          spreadRadius: 2,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: const CircleAvatar(
-                  radius: 50,
-                  backgroundColor: Color(0xFF2980B9),
-                  child: Icon(Icons.person, size: 60, color: Colors.white),
-                ),
+                    child: CircleAvatar(
+                      radius: 50,
+                      backgroundColor: const Color(0xFF2980B9),
+                      backgroundImage: _base64Image != null
+                          ? MemoryImage(base64Decode(_base64Image!))
+                          : null,
+                      child: _base64Image == null
+                          ? const Icon(
+                              Icons.person,
+                              size: 60,
+                              color: Colors.white,
+                            )
+                          : null,
+                    ),
+                  ),
+                  if (_isEditing)
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: GestureDetector(
+                        onTap: _pickImage,
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF27AE60),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 3),
+                          ),
+                          child: const Icon(
+                            Icons.camera_alt,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
@@ -324,7 +400,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   Widget _buildEditForm(bool isLoading) {
     return Form(
-      key: const ValueKey('editMode'),
+      key: _formKey,
       child: Container(
         padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(

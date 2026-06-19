@@ -27,13 +27,16 @@ class PresensiModel {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'id': id,
+    var map = <String, dynamic>{
       'user_id': userId,
       'tanggal': tanggal,
       'jam': jam,
       'latitude': latitude,
       'longitude': longitude,
     };
+    if (id != null) {
+      map['id'] = id;
+    }
+    return map;
   }
 }
