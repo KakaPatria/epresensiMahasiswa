@@ -4,6 +4,8 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi ini membutuhkan akses lokasi untuk mendeteksi apakah Anda berada di area kampus saat melakukan presensi.</string>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

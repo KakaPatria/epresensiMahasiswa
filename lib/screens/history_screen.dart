@@ -289,11 +289,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             color: Color(0xFF2C3E50),
                           ),
                         ),
-                        subtitle: Padding(
-                          padding: const EdgeInsets.only(top: 4.0),
+                        subtitle: const Padding(
+                          padding: EdgeInsets.only(top: 4.0),
                           child: Text(
-                            'Lat: ${presensi.latitude}\nLng: ${presensi.longitude}',
-                            style: const TextStyle(
+                            'Status: Hadir di Area Kampus\nKetuk untuk melihat lokasi presensi',
+                            style: TextStyle(
                               height: 1.5,
                               color: Colors.grey,
                             ),
