@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../providers/auth_provider.dart';
 import 'login_screen.dart';
+import 'dashboard_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,14 +31,31 @@ class _SplashScreenState extends State<SplashScreen>
 
     _controller.forward();
 
-    Future.delayed(const Duration(seconds: 3), () {
-      if (mounted) {
+    _checkSession();
+  }
+
+  Future<void> _checkSession() async {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    
+    // Proses cek session di background
+    await authProvider.checkLoginStatus();
+    
+    // Tunggu animasi splash screen selesai (minimal 3 detik)
+    await Future.delayed(const Duration(seconds: 3));
+    
+    if (mounted) {
+      if (authProvider.currentUser != null) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        );
+      } else {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const LoginScreen()),
         );
       }
-    });
+    }
   }
 
   @override

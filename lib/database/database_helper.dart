@@ -21,7 +21,7 @@ class DatabaseHelper {
   Future<Database> _initDB(String filePath) async {
     if (kIsWeb) {
       databaseFactory = databaseFactoryFfiWebNoWebWorker;
-      return await openDatabase(filePath, version: 1, onCreate: _createDB);
+      return await openDatabase(filePath, version: 3, onCreate: _createDB, onUpgrade: _upgradeDB);
     } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -29,12 +29,12 @@ class DatabaseHelper {
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, filePath);
 
-      return await openDatabase(path, version: 1, onCreate: _createDB);
+      return await openDatabase(path, version: 3, onCreate: _createDB, onUpgrade: _upgradeDB);
     } else {
       final dbPath = await getDatabasesPath();
       final path = join(dbPath, filePath);
 
-      return await openDatabase(path, version: 1, onCreate: _createDB);
+      return await openDatabase(path, version: 3, onCreate: _createDB, onUpgrade: _upgradeDB);
     }
   }
 
@@ -56,12 +56,25 @@ class DatabaseHelper {
       tanggal TEXT,
       jam TEXT,
       latitude REAL,
-      longitude REAL
+      longitude REAL,
+      status TEXT,
+      mata_kuliah TEXT,
+      foto_selfie TEXT
     )
     ''';
 
     await db.execute(userTable);
     await db.execute(presensiTable);
+  }
+
+  Future _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE presensi ADD COLUMN status TEXT DEFAULT "Tepat Waktu"');
+      await db.execute('ALTER TABLE presensi ADD COLUMN mata_kuliah TEXT DEFAULT "Kelas Umum"');
+    }
+    if (oldVersion < 3) {
+      await db.execute('ALTER TABLE presensi ADD COLUMN foto_selfie TEXT');
+    }
   }
 
   // User Methods

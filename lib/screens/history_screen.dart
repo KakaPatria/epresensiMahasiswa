@@ -15,6 +15,8 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
+  String _selectedMatkul = 'Semua Mata Kuliah';
+
   @override
   void initState() {
     super.initState();
@@ -70,6 +72,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 child: SingleChildScrollView(
                   child: Column(
                     children: [
+                      // Selfie View is hidden as requested
+
                       // Map View
                       ClipRRect(
                         borderRadius: BorderRadius.circular(20),
@@ -90,8 +94,32 @@ class _HistoryScreenState extends State<HistoryScreen> {
                                     'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                                 userAgentPackageName: 'com.example.epresensi',
                               ),
+                              CircleLayer(
+                                circles: [
+                                  CircleMarker(
+                                    point: const LatLng(LocationService.targetLatitude, LocationService.targetLongitude),
+                                    color: Colors.blue.withValues(alpha: 0.2),
+                                    borderColor: Colors.blueAccent,
+                                    borderStrokeWidth: 2,
+                                    useRadiusInMeter: true,
+                                    radius: LocationService.maxRadius,
+                                  ),
+                                ],
+                              ),
                               MarkerLayer(
                                 markers: [
+                                  // Campus Center Pin
+                                  Marker(
+                                    point: const LatLng(LocationService.targetLatitude, LocationService.targetLongitude),
+                                    width: 40,
+                                    height: 40,
+                                    child: const Icon(
+                                      Icons.business_rounded,
+                                      color: Colors.blue,
+                                      size: 30,
+                                    ),
+                                  ),
+                                  // User Attend Pin
                                   Marker(
                                     point: LatLng(
                                       presensi.latitude,
@@ -144,6 +172,18 @@ class _HistoryScreenState extends State<HistoryScreen> {
                             address,
                           );
                         },
+                      ),
+                      const Divider(height: 20),
+                      _buildDetailRow(
+                        Icons.school_rounded,
+                        'Mata Kuliah',
+                        presensi.mataKuliah,
+                      ),
+                      const Divider(height: 20),
+                      _buildDetailRow(
+                        Icons.info_outline_rounded,
+                        'Status Kehadiran',
+                        presensi.status,
                       ),
                       const SizedBox(height: 24),
                     ],
@@ -226,6 +266,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
     final presensiProvider = Provider.of<PresensiProvider>(context);
     final riwayat = presensiProvider.riwayatPresensi;
 
+    List<String> allSubjects = [];
+    for (var list in presensiProvider.getWeeklySchedules().values) {
+      for (var schedule in list) {
+        allSubjects.add(schedule['nama']);
+      }
+    }
+    List<String> uniqueSubjects = allSubjects.toSet().toList();
+    uniqueSubjects.sort();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF5F7FA),
       appBar: AppBar(
@@ -239,80 +288,248 @@ class _HistoryScreenState extends State<HistoryScreen> {
       ),
       body: presensiProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : riwayat.isEmpty
-          ? _buildEmptyState()
-          : RefreshIndicator(
-              onRefresh: _loadHistory,
-              child: ListView.builder(
-                physics: const AlwaysScrollableScrollPhysics(),
-                padding: const EdgeInsets.all(16.0),
-                itemCount: riwayat.length,
-                itemBuilder: (context, index) {
-                  final presensi = riwayat[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
+          : Column(
+              children: [
+                // Filter Dropdown
+                if (riwayat.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
+                          color: Colors.blueGrey.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
                       ],
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 20,
-                          vertical: 8,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.filter_list_rounded, color: Color(0xFF2980B9)),
+                        const SizedBox(width: 12),
+                        const Text(
+                          'Filter:',
+                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                         ),
-                        leading: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Colors.green.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check_circle_rounded,
-                            color: Colors.green,
-                            size: 28,
-                          ),
-                        ),
-                        title: Text(
-                          '${presensi.tanggal} - ${presensi.jam}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                            color: Color(0xFF2C3E50),
-                          ),
-                        ),
-                        subtitle: const Padding(
-                          padding: EdgeInsets.only(top: 4.0),
-                          child: Text(
-                            'Status: Hadir di Area Kampus\nKetuk untuk melihat lokasi presensi',
-                            style: TextStyle(
-                              height: 1.5,
-                              color: Colors.grey,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: DropdownButtonHideUnderline(
+                            child: DropdownButton<String>(
+                              value: _selectedMatkul,
+                              isExpanded: true,
+                              icon: const Icon(Icons.arrow_drop_down_rounded, color: Color(0xFF2980B9)),
+                              style: const TextStyle(
+                                color: Color(0xFF2C3E50),
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                              items: ['Semua Mata Kuliah', ...uniqueSubjects]
+                                  .map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (newValue) {
+                                setState(() {
+                                  _selectedMatkul = newValue!;
+                                });
+                              },
                             ),
                           ),
                         ),
-                        trailing: const Icon(
-                          Icons.chevron_right_rounded,
-                          color: Colors.grey,
+                      ],
+                    ),
+                  ),
+                
+                // List View
+                Expanded(
+                  child: riwayat.isEmpty
+                      ? _buildEmptyState()
+                      : RefreshIndicator(
+                          onRefresh: _loadHistory,
+                          child: Builder(
+                            builder: (context) {
+                              final filteredRiwayat = _selectedMatkul == 'Semua Mata Kuliah'
+                                  ? riwayat
+                                  : presensiProvider.generateTimelineMatkul(_selectedMatkul);
+
+                              if (filteredRiwayat.isEmpty) {
+                                return const Center(
+                                  child: Text(
+                                    'Tidak ada riwayat untuk mata kuliah ini.',
+                                    style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                                  ),
+                                );
+                              }
+
+                              return ListView.builder(
+                                physics: const AlwaysScrollableScrollPhysics(),
+                                padding: const EdgeInsets.all(16.0),
+                                itemCount: filteredRiwayat.length,
+                                itemBuilder: (context, index) {
+                                  final presensi = filteredRiwayat[index];
+                                  return Container(
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blueGrey.withValues(alpha: 0.08),
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
                         ),
-                        onTap: () => _showDetail(presensi),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      borderRadius: BorderRadius.circular(20),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(20),
+                        onTap: presensi.status == 'Alpa' 
+                          ? () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Detail absen tidak tersedia karena Anda Alpa.')),
+                              );
+                            }
+                          : () => _showDetail(presensi),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Row(
+                            children: [
+                              // Ikon / Badge Tanggal di Kiri
+                              Container(
+                                width: 60,
+                                height: 60,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: presensi.status == 'Alpa'
+                                        ? [const Color(0xFFE74C3C), const Color(0xFFC0392B)]
+                                        : [const Color(0xFF2980B9), const Color(0xFF6DD5FA)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      presensi.status == 'Alpa' ? Icons.event_busy_rounded : Icons.event_available_rounded, 
+                                      color: Colors.white, 
+                                      size: 28
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 16),
+                              
+                              // Info Presensi di Tengah
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      presensi.tanggal,
+                                      style: const TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.grey,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      presensi.jam,
+                                      style: const TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                        color: Color(0xFF2C3E50),
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      presensi.mataKuliah,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Color(0xFF2980B9),
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              
+                              // Status Badge di Kanan
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: presensi.status == 'Tepat Waktu' ? Colors.green.withValues(alpha: 0.15) 
+                                           : presensi.status == 'Alpa' ? Colors.red.withValues(alpha: 0.15)
+                                           : Colors.orange.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          presensi.status == 'Tepat Waktu' ? Icons.check_circle 
+                                          : presensi.status == 'Alpa' ? Icons.cancel_rounded
+                                          : Icons.warning_rounded, 
+                                          color: presensi.status == 'Tepat Waktu' ? Colors.green 
+                                          : presensi.status == 'Alpa' ? Colors.red
+                                          : Colors.orange, 
+                                          size: 14
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          presensi.status,
+                                          style: TextStyle(
+                                            color: presensi.status == 'Tepat Waktu' ? Colors.green 
+                                                 : presensi.status == 'Alpa' ? Colors.red
+                                                 : Colors.orange,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 12),
+                                  if (presensi.status != 'Alpa')
+                                    const Text(
+                                      'Lihat Detail ➔',
+                                      style: TextStyle(
+                                        color: Color(0xFF2980B9),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ),
                   );
                 },
-              ),
+              );
+            },
+                          ),
+                        ),
+                ),
+              ],
             ),
     );
   }
-
   Widget _buildEmptyState() {
     return Center(
       child: Column(
